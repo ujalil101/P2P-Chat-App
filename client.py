@@ -1,47 +1,70 @@
+import sqlite3
 import socket
 import tkinter as tk
 from threading import Thread
 import datetime
 
+# Database file
+DATABASE_FILE = "chat_history.db"
+
+
 def receive_message():
     while True:
         try:
-            # recieve message from server
+            # Receive message from server
             message = client_socket.recv(1024).decode("utf-8")
             if message:
-                timestamp = datetime.datetime.now().strftime("%I:%M %p")
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # calc padding to push timestamp to the right
-                padding = "  " * (msg_listbox.winfo_width() - len(message) - len(timestamp))
+                # Save the message to the database
+                save_message_to_database(message, timestamp)
 
-                # display  message 
-                msg_listbox.insert(tk.END, f"{message}{padding}{timestamp}")
+                # Display the received message in the chat window with timestamp
+                if message.startswith("You:"):
+                    # Display messages sent by the user without prefix
+                    msg_listbox.insert(tk.END, f"{message[4:]} ({timestamp})")
+                else:
+                    # Display messages received from other users as is
+                    msg_listbox.insert(tk.END, f"{message} ({timestamp})")
         except OSError:
-            
+            # Possibly server has closed the connection
             break
-        
+
+
 def send_message(event=None):
-    # get message 
+    # Get the message from the entry widget
     message = my_msg.get()
     my_msg.set("")  # Clear the input field
 
-    # calc timestamp
-    timestamp = datetime.datetime.now().strftime(" (%I:%M %p)")
+    # Calculate timestamp
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # calc padding to align timestamp to the right
-    padding = "    " * (msg_listbox.winfo_width() - len(message) - len(timestamp))
+    # Display the sent message in the chat window with timestamp
+    msg_listbox.insert(tk.END, f"You: {message} ({timestamp})")
 
-    # display  message 
-    msg_listbox.insert(tk.END, f"You: {message}{padding}{timestamp}")
+    # Save the message to the database
+    save_message_to_database(f"You: {message}", timestamp)
 
-    # send message to the server along with the timestamp
-    client_socket.send(f"{message}{timestamp}".encode("utf-8"))
+    # Send the message to the server along with the timestamp
+    client_socket.send(f"{message}".encode("utf-8"))
+
+def save_message_to_database(message, timestamp):
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # Insert the message into the database
+    cursor.execute("INSERT INTO messages (message, timestamp) VALUES (?, ?)", (message, timestamp))
+
+    conn.commit()
+    conn.close()
+
 
 def on_closing(event=None):
     # when window is closed, send "close" to the server and close the connection
     my_msg.set("close")
     send_message()
     root.destroy()
+
 
 def run_client():
     global client_socket
@@ -50,14 +73,15 @@ def run_client():
     server_ip = "127.0.0.1"  
     server_port = 8000 
 
-    #  connect with server
+    # connect with server
     client_socket.connect((server_ip, server_port))
 
     # get username from user
     username = input("Enter your username: ")
     client_socket.send(username.encode("utf-8"))
 
-    #  GUI window
+
+    # GUI window
     global root
     root = tk.Tk()
     root.title("Chat App")
@@ -73,6 +97,8 @@ def run_client():
     msg_listbox.pack(side=tk.LEFT, fill=tk.BOTH)
     msg_listbox.pack()
     messages_frame.pack()
+
+   
 
     # widget to input messages
     global my_msg
@@ -94,6 +120,7 @@ def run_client():
 
     # run GUI
     root.mainloop()
+
 
 if __name__ == "__main__":
     run_client()
