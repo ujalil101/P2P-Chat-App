@@ -1,47 +1,70 @@
 import socket
+import threading
+import datetime
 
+def handle_client(client_socket, client_address, username):
+    print(f"Accepted connection from {client_address} as {username}")
+    while True:
+        try:
+            # Receive message from client
+            message = client_socket.recv(1024).decode("utf-8")
+            if message:
+                print(f"{username}: {message}")
+                # Broadcast message to all clients
+                broadcast_message(f"{username}: {message}", client_socket)
+            else:
+                # If no message received, close the connection
+                close_connection(client_socket, client_address)
+                break
+        except ConnectionResetError:
+            close_connection(client_socket, client_address)
+            break
+
+
+def broadcast_message(message, sender_socket):
+    # Send message to all clients except the sender
+    for client in clients:
+        if client != sender_socket:
+            try:
+                client.sendall(message.encode("utf-8"))
+            except:
+                # If sending message fails, close the connection
+                client.close()
+                remove_client(client)
+
+def remove_client(client_socket):
+    if client_socket in clients:
+        clients.remove(client_socket)
+
+def close_connection(client_socket, client_address):
+    print(f"Connection closed with {client_address}")
+    remove_client(client_socket)
+    client_socket.close()
 
 def run_server():
-    # create a socket object
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     server_ip = "127.0.0.1"
     port = 8000
 
-    # bind the socket to a specific address and port
+    # Create server socket
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((server_ip, port))
-    # listen for incoming connections
-    server.listen(0)
+    server.listen(5)
     print(f"Listening on {server_ip}:{port}")
 
-    # accept incoming connections
-    client_socket, client_address = server.accept()
-    print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
-
-    # receive data from the client
     while True:
-        request = client_socket.recv(1024)
-        request = request.decode("utf-8") # convert bytes to string
-        
-        # if we receive "close" from the client, then we break
-        # out of the loop and close the conneciton
-        if request.lower() == "close":
-            # send response to the client which acknowledges that the
-            # connection should be closed and break out of the loop
-            client_socket.send("closed".encode("utf-8"))
-            break
+        # Accept incoming connections
+        client_socket, client_address = server.accept()
+        clients.append(client_socket)
 
-        print(f"Received: {request}")
+        # Receive username from the client
+        username = client_socket.recv(1024).decode("utf-8")
 
-        response = "accepted".encode("utf-8") # convert string to bytes
-        # convert and send accept response to the client
-        client_socket.send(response)
-
-    # close connection socket with the client
-    client_socket.close()
-    print("Connection to client closed")
-    # close server socket
-    server.close()
+        # Start a new thread to handle the client
+        client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address, username))
+        client_thread.start()
 
 
-run_server()
+clients = []
+
+if __name__ == "__main__":
+    run_server()
