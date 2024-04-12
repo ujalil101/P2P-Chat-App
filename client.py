@@ -11,48 +11,47 @@ DATABASE_FILE = "chat_history.db"
 def receive_message():
     while True:
         try:
-            # Receive message from server
+            # receive message from server
             message = client_socket.recv(1024).decode("utf-8")
             if message:
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # Save the message to the database
+                # save message to the database
                 save_message_to_database(message, timestamp)
 
-                # Display the received message in the chat window with timestamp
+                # dispaly message
                 if message.startswith("You:"):
-                    # Display messages sent by the user without prefix
+                    # dispaly message
                     msg_listbox.insert(tk.END, f"{message[4:]} ({timestamp})")
                 else:
-                    # Display messages received from other users as is
+                    # dispaly message
                     msg_listbox.insert(tk.END, f"{message} ({timestamp})")
         except OSError:
-            # Possibly server has closed the connection
             break
 
 
 def send_message(event=None):
-    # Get the message from the entry widget
+    #get message
     message = my_msg.get()
-    my_msg.set("")  # Clear the input field
+    my_msg.set("") 
 
-    # Calculate timestamp
+    # calc timestamp
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Display the sent message in the chat window with timestamp
+    # display message
     msg_listbox.insert(tk.END, f"You: {message} ({timestamp})")
 
-    # Save the message to the database
+    # save msg
     save_message_to_database(f"You: {message}", timestamp)
 
-    # Send the message to the server along with the timestamp
+    # send message to server
     client_socket.send(f"{message}".encode("utf-8"))
 
 def save_message_to_database(message, timestamp):
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
-    # Insert the message into the database
+    # insert msg to db 
     cursor.execute("INSERT INTO messages (message, timestamp) VALUES (?, ?)", (message, timestamp))
 
     conn.commit()

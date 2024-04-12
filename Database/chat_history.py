@@ -1,13 +1,13 @@
 import sqlite3
 
-# Database file
+# DB file
 DATABASE_FILE = "chat_history.db"
 
 def create_database():
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
-    # Create a table to store chat messages
+    # create table to store chat messages
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
                       id INTEGER PRIMARY KEY,
                       message TEXT NOT NULL,
@@ -17,7 +17,7 @@ def create_database():
     conn.commit()
     conn.close()
 
-# Create the database
+# create DB
 create_database()
 
 print("Database 'chat_history.db' has been created successfully.")
