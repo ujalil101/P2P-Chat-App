@@ -51,11 +51,12 @@ def save_message_to_database(message, timestamp):
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
-    # insert msg to db 
+    # using parameterized query to insert message to prevent against  SQL injection attacks
     cursor.execute("INSERT INTO messages (message, timestamp) VALUES (?, ?)", (message, timestamp))
 
     conn.commit()
     conn.close()
+    
 
 
 def on_closing(event=None):
